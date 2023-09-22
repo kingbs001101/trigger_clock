@@ -1,0 +1,79 @@
+# server side code
+# Basic communication without triggering
+
+# Citing the required libraries
+import socket
+import time
+import nidaqmx
+import threading  # Import the threading module
+
+# Global variables to track connected clients
+connected_clients = []
+
+# Start the server and send data after connecting to the client
+def start_server():
+
+    # Create socket object, AF_INET: Use IPv4 address system, SOCK_STREAM: Use TCP protocol
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+    # Connect the created socket to a specific address and port
+    server_socket.bind(('192.168.0.144', 1234))
+    
+    # Standby to receive up to 2 client connections
+    server_socket.listen(2)
+
+    # Print text when the server starts
+    print("The server has started. Waiting for 2 connections from clients...")
+
+    # Function to handle a single client connection
+    def handle_client(conn):
+        try:
+            # Print text when connecting to the client
+            print("Client connected.")
+            
+            # Wait for all clients to connect
+            while len(connected_clients) < 2:
+                time.sleep(1)
+            
+            # Notify that both clients are connected
+            print("Both clients are connected. Press Enter to start data transfer.")
+
+            # Wait for Enter key press
+            input()
+
+            # Start sending data to both clients
+            start_time = time.time()
+            while True:
+                with nidaqmx.Task() as task0:
+                    task0.ai_channels.add_ai_voltage_chan("Dev1/ai0")
+                    voltage = round(task0.read(), 2)
+
+                    # Get the current timestamp using time.time()
+                    current_time = time.time()-start_time
+
+                    # Prepare data with timestamp
+                    data_to_send = f"{current_time}: {voltage}\n"
+                    
+                    for client in connected_clients:
+                        client.sendall(data_to_send.encode())
+                    time.sleep(0.001)
+
+        except KeyboardInterrupt:
+            print("Shutting down the server.")
+        finally:
+            conn.close()
+            connected_clients.remove(conn)
+
+    # Start infinite loop to accept client connections
+    while True:
+        conn, addr = server_socket.accept()
+        connected_clients.append(conn)
+        client_thread = threading.Thread(target=handle_client, args=(conn,))
+        client_thread.start()
+
+    # Close the server socket (This part may not be reached if you're running an infinite loop)
+    server_socket.close()
+
+# When executing the code, call the start_server() function to start the server
+if __name__ == "__main__":
+    start_server()
