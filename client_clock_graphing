@@ -1,0 +1,79 @@
+# Cite the required libraries
+import socket
+import matplotlib.pyplot as plt
+import numpy as np  # Import numpy for handling time data
+
+# Graph default configuration settings
+def create_graph():
+    fig, ax = plt.subplots()
+    ax.set_xlabel('Time (seconds)')
+    ax.set_ylabel('Voltage (V)')
+    ax.set_title('Real-time Voltage vs. Time graph')
+    ax.grid(True)
+    return fig, ax
+
+# Update the graph in real time
+# 실시간으로 그래프 업데이트
+def update_graph(i, ax):
+
+    # 소켓으로부터 최대 1025바이트의 데이터를 받아옴
+    # 받아온 데이터를 디코딩 해서 data 변수에 저장 
+    data = client_socket.recv(1024).decode()
+
+    # 받아온 데이터가 비어있다면(클라이언트가 연결을 끊으면) 소켓을 닫고 함수를 종료
+    if not data:
+        client_socket.close()
+        return
+    
+    # 받아온 데이터를 각 줄로 분리하여 리스트로 만들고 타임스탬프와 전압 값으로 다룬다
+    data_lines = data.strip().split('\n')
+
+    # 타임스탬프와 전압 값을 추출
+    
+    for line in data_lines:
+        time_data, voltage_data = line.split(': ')
+        timestamps.append(float(time_data))
+        voltages_ai0.append(float(voltage_data))
+
+    # 그래프 초기화
+    ax.clear()
+
+    # 데이터를 플롯
+    ax.plot(timestamps, voltages_ai0)
+
+    # 그래프 축 및 제목 설정
+    ax.set_xlabel('시간 (초)')
+    ax.set_ylabel('전압 (V)')
+    ax.set_title('전압 vs. 시간')
+    ax.set_xlim(0,10)
+    # 그래프에 격자 추가
+    ax.grid(True)
+    
+    plt.pause(0.01)  # 원하는 업데이트 속도에 맞게 이 값을 조정하세요
+
+# Start client execution
+def start_client():
+
+    # Global variable declaration
+    global client_socket
+
+    # Create a client socket and connect to the server
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client_socket.connect(('192.168.0.144', 1234))
+
+    # Create a graph object
+    fig, ax = create_graph()
+
+    # Run the update_graph function
+    plt.ion()  # Turn on interactive mode for real-time updating
+    while True:
+        update_graph(0, ax)
+        
+
+# Run main code
+if __name__ == "__main__":
+
+    timestamps = []
+    voltages_ai0 = []
+
+    start_client()
